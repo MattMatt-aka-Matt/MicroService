@@ -2,11 +2,10 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
   try {
-    console.log('Tentative de connexion à MongoDB...');
-    await mongoose.connect('mongodb://localhost:27017/auth-microservice');
-    console.log('MongoDB connecté avec succès');
+    await mongoose.connect(process.env.MONGODB_URI);
+    console.log('MongoDB connected successfully');
   } catch (error) {
-    console.error('Erreur de connexion MongoDB:', error);
+    console.error('MongoDB connection error:', error);
     process.exit(1);
   }
 };

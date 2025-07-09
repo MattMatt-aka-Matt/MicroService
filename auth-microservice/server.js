@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
@@ -17,20 +18,13 @@ connectDB();
 app.use('/api/auth', authRoutes);
 
 
-app.get('/api/protected', require('./middleware/auth'), (req, res) => {
-  res.json({ message: 'Accès autorisé', user: req.user });
+app.get('/api/test', (req, res) => {
+  res.json({ 
+    message: 'Auth microservice is running',
+    timestamp: new Date().toISOString()
+  });
 });
 
 app.listen(PORT, () => {
-  console.log(`Microservice d'authentification sur le port ${PORT}`);
-});
-
-
-app.post('/api/test', (req, res) => {
-  console.log('📝 Test route - Body reçu:', req.body);
-  res.json({ 
-    message: 'Test OK', 
-    received: req.body,
-    timestamp: new Date().toISOString()
-  });
+  console.log(`Auth microservice running on port ${PORT}`);
 });

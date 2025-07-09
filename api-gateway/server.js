@@ -1,6 +1,7 @@
+require('dotenv').config();
 const express = require('express');
-const { createProxyMiddleware } = require('http-proxy-middleware');
 const cors = require('cors');
+const proxy = require('express-http-proxy');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -9,61 +10,49 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-
-const services = {
-  auth: 'http://localhost:3001'
-};
-
-
-app.use('/api/auth', createProxyMiddleware({
-  target: services.auth,
-  changeOrigin: true,
-  pathRewrite: {
-    '^/api/auth': '/api/auth'
+app.use('/api/auth', proxy(process.env.AUTH_SERVICE_URL, {
+  proxyReqPathResolver: function(req) {
+    return '/api/auth' + req.url;
   },
-  onError: (err, req, res) => {
-    console.error('Erreur proxy:', err.message);
-    res.status(500).json({ 
-      message: 'Erreur de proxy', 
-      error: 'Le microservice d\'authentification n\'est pas disponible' 
-    });
+  proxyReqOptDecorator: function(proxyReqOpts, srcReq) {
+
+    if (srcReq.headers.authorization) {
+      proxyReqOpts.headers['Authorization'] = srcReq.headers.authorization;
+    }
+    proxyReqOpts.headers['Content-Type'] = 'application/json';
+    return proxyReqOpts;
   },
-  onProxyReq: (proxyReq, req, res) => {
-    console.log(`Proxy: ${req.method} ${req.url} -> ${services.auth}${req.url}`);
+  userResDecorator: function(proxyRes, proxyResData, userReq, userRes) {
+    try {
+      return proxyResData;
+    } catch (error) {
+      console.error('Proxy error:', error);
+      return { message: 'Auth service unavailable' };
+    }
   }
 }));
 
-
-app.get('/health', (req, res) => {
+// Route de test
+app.get('/api/test', (req, res) => {
   res.json({ 
-    status: 'API Gateway opérationnelle',
-    services: Object.keys(services),
+    message: 'API Gateway is running',
     timestamp: new Date().toISOString()
   });
 });
 
-
+// Route principale
 app.get('/', (req, res) => {
   res.json({
-    message: 'API Gateway - Microservices',
-    availableServices: Object.keys(services),
+    message: 'API Gateway - Microservices (with express-http-proxy)',
     endpoints: [
-      'GET /health - Statut de l\'API Gateway',
-      'POST /api/auth/register - Inscription',
-      'POST /api/auth/login - Connexion'
+      'POST /api/auth/register - User registration',
+      'POST /api/auth/login - User login',
+      'GET /api/auth/profile - User profile (protected)',
+      'GET /api/test - Test endpoint'
     ]
   });
 });
 
-
-app.use((err, req, res, next) => {
-  console.error('Erreur API Gateway:', err);
-  res.status(500).json({ 
-    message: 'Erreur interne de l\'API Gateway' 
-  });
-});
-
 app.listen(PORT, () => {
-  console.log(`API Gateway démarrée sur le port ${PORT}`);
-  console.log(`URL: http://localhost:${PORT}`);
+  console.log(`API Gateway running on port ${PORT} with express-http-proxy`);
 });
