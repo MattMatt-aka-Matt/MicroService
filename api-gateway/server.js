@@ -14,22 +14,6 @@ app.use('/api/auth', proxy(process.env.AUTH_SERVICE_URL, {
   proxyReqPathResolver: function(req) {
     return '/api/auth' + req.url;
   },
-  proxyReqOptDecorator: function(proxyReqOpts, srcReq) {
-
-    if (srcReq.headers.authorization) {
-      proxyReqOpts.headers['Authorization'] = srcReq.headers.authorization;
-    }
-    proxyReqOpts.headers['Content-Type'] = 'application/json';
-    return proxyReqOpts;
-  },
-  userResDecorator: function(proxyRes, proxyResData, userReq, userRes) {
-    try {
-      return proxyResData;
-    } catch (error) {
-      console.error('Proxy error:', error);
-      return { message: 'Auth service unavailable' };
-    }
-  }
 }));
 
 // Route de test
