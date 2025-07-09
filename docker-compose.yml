@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # Base de données MongoDB
+  mongodb:
+    image: mongo:7.0
+    container_name: microservice_mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_DATABASE: microservice_db
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - microservice-network
+
+  # Microservice d'authentification (non exposé directement)
+  auth-microservice:
+    build:
+      context: ./auth-microservice
+      dockerfile: Dockerfile
+    container_name: auth_microservice
+    restart: unless-stopped
+    environment:
+      - PORT=3001
+      - MONGODB_URI=mongodb://admin:password123@mongodb:27017/microservice_db?authSource=admin
+      - JWT_SECRET=your-jwt-secret-key-here
+    depends_on:
+      - mongodb
+    networks:
+      - microservice-network
+    # Pas de ports exposés - accessible uniquement via le réseau interne
+
+  # API Gateway (seul service exposé)
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: api_gateway
+    restart: unless-stopped
+    environment:
+      - PORT=3000
+      - AUTH_SERVICE_URL=http://auth-microservice:3001
+    ports:
+      - "3000:3000"
+    depends_on:
+      - auth-microservice
+    networks:
+      - microservice-network
+
+volumes:
+  mongodb_data:
+
+networks:
+  microservice-network:
+    driver: bridge
